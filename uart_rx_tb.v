@@ -37,8 +37,6 @@ begin
 		if (data != k) begin
 			$display("Error: k was %b data was %b", k, data);
 		end
-
-		#(CPB*2);
 	end
 	$finish;
 end

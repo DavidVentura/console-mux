@@ -99,18 +99,20 @@ always @(posedge clk) begin
 		end
 		SM_RX_STOP: begin
 			// Still starting at the middle of the bit cycle
+			// FIXME this only works with 1 STOP BIT COUNT
+			// the state will transition to idle half a cycle before
+			// it should.
 			r_ready <= 1;
-			if (clock_count < CLK_PER_BIT -1) begin
-				clock_count <= clock_count + 1;
+			if (serial != 1'b1) begin
+				$display("Bad stop bit");
+			end
+			if (current_bit < STOP_BIT_COUNT-1) begin
+				current_bit <= current_bit + 1;
 			end
 			else begin
-				if (current_bit < STOP_BIT_COUNT-1) begin
-					current_bit <= current_bit + 1;
-				end
-				else begin
-					current_bit <= 0;
-					state <= SM_IDLE;
-				end
+				current_bit <= 0;
+				state <= SM_IDLE;
+				sampling <= 0;
 			end
 		end
 	endcase
