@@ -1,3 +1,5 @@
 my_design
 uart_rx
+uart_tx
+uart_tx_rx
 *vcd
