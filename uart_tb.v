@@ -18,26 +18,35 @@ uart_rx #(.CLK_PER_BIT(CPB)) rx(clk, serial_line, rx_ready, rx_data);
 
 reg [7:0] test_data = 8'b01100011;
 
+integer i;
 initial
 begin
-	$dumpfile("test.vcd");
-	$dumpvars(0,test);
 	tx_data_ready <= 0;
-	tx_data <= test_data;
-	tx_data_ready <= 1;
-	#1;
-	tx_data_ready <= 0;
+	//$dumpfile("test.vcd");
+	//$dumpvars(0,test);
 
-	#(CPB*21);
-	if (tx_done != 1'b1) begin
-		$display("Error: did not finish transmission");
+	//for(i=8'h7d; i<8'h82; i++) begin
+	for(i=0; i<256; i++) begin
+		//tx_data <= 8'b00101010;
+		tx_data <= i;
+		tx_data_ready <= 1;
+		#2;
+		@(posedge clk); tx_data_ready <= 0;
+
+		@(posedge rx_ready);
 	end
 	$finish;
 end
 always @(posedge rx_ready) begin
-	$display("on rx_ready, tx_done was %d", tx_done);
+	if (tx_done != 1'b1) begin
+		$display("Error: did not finish transmission");
+	end
+
 	if (rx_data != tx_data) begin
 		$display("Error: rx_data %h tx_data %h", rx_data, tx_data);
+	end
+	else begin
+		$display("rx_data matched tx_data, %h=%h", rx_data, tx_data);
 	end
 end
 

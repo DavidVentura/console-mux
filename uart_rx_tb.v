@@ -16,8 +16,8 @@ integer k;
 //$monitor("clock count %d", clock_count);
 initial
 begin
-	$dumpfile("test.vcd");
-	$dumpvars(0,test);
+	//$dumpfile("test.vcd");
+	//$dumpvars(0,test);
 
 	for(k=0; k<256; k=k+1) begin
 
@@ -29,7 +29,7 @@ begin
 		end
 
 		serial_line <= 1'b1; // stop bit
-		#(CPB*2);
+		#(CPB*3);
 
 		if (ready != 1'b1) begin
 			$display("Error: byte was not ready");
@@ -40,4 +40,5 @@ begin
 	end
 	$finish;
 end
+
 endmodule

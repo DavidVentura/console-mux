@@ -37,7 +37,6 @@ assign serial = serial_r;
 always @(posedge clk) begin
 	case (state)
 		SM_IDLE: begin
-			done_r <= 0;
 			if (data_ready == 1'b1) begin
 				data_r <= data;
 				done_r <= 0;
@@ -48,27 +47,23 @@ always @(posedge clk) begin
 			serial_r <= 1'b0;
 			if (clock_count < CLK_PER_BIT-1) begin
 				clock_count <= clock_count + 1;
-			end
-			else begin
+			end else begin
 				state <= SM_TX_DATA;
 			end
 		end
 		SM_TX_DATA: begin
 			if (clock_count < CLK_PER_BIT-1) begin
 				clock_count <= clock_count + 1;
-			end
-			else begin
-				serial_r <= data_r[current_bit];
+			end else begin
 				clock_count <= 0;
-				if (current_bit < DATA_BIT_COUNT-1) begin
+				if (current_bit < DATA_BIT_COUNT) begin
+					serial_r <= data_r[current_bit];
 					current_bit <= current_bit + 1;
-				end
-				else begin
+				end else begin
 					current_bit <= 0;
 					if (PARITY_BIT_COUNT > 0) begin
 						state <= SM_TX_PARITY;
-					end
-					else begin
+					end else begin
 						state <= SM_TX_STOP;
 					end
 				end
@@ -78,14 +73,17 @@ always @(posedge clk) begin
 			$finish;
 		end
 		SM_TX_STOP: begin
-			serial_r <= 0;
+			// Hold serial down for the entire cycle
+			// then mark the transaction complete
+			serial_r <= 1;
 			if (clock_count < CLK_PER_BIT-1) begin
 				clock_count <= clock_count + 1;
-			end
-			else begin
-				current_bit <= current_bit + 1;
+			end else begin
 				clock_count <= 0;
-				if (current_bit == STOP_BIT_COUNT -1) begin
+				if (current_bit < STOP_BIT_COUNT -1) begin
+					current_bit <= current_bit + 1;
+				end else begin
+					current_bit <= 0;
 					done_r <= 1;
 					state <= SM_IDLE;
 				end

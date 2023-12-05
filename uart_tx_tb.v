@@ -20,7 +20,7 @@ begin
 	data_ready <= 1;
 	#1;
 	data_ready <= 0;
-	#(CPB*19);
+	#(CPB*21);
 	if (done != 1'b1) begin
 		$display("Error: did not finish transmission");
 	end

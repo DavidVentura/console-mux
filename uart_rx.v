@@ -40,6 +40,8 @@ always @(posedge clk) begin
 				// Pulling the line down for 1 cycle starts a data transfer
 				clock_count <= 0;
 				state <= SM_RX_START;
+				current_bit <= 0;
+				r_data <= 0;
 			end
 		end
 		SM_RX_START: begin
@@ -54,14 +56,12 @@ always @(posedge clk) begin
 					current_bit <= 0;
 					clock_count <= 0;
 					state <= SM_RX_DATA;
-				end
-				else begin
+				end else begin
 					// The line was _not_ held down. Probably noise.
 					// Restart the state machine
 					state <= SM_IDLE;
 				end
-			end
-			else begin
+			end else begin
 				sampling <= 0;
 				clock_count <= clock_count + 1;
 			end
@@ -73,21 +73,18 @@ always @(posedge clk) begin
 			if (clock_count < CLK_PER_BIT-1) begin
 				clock_count <= clock_count + 1;
 				sampling <= 0;
-			end
-			else begin
+			end else begin
 				// At the middle of the data bit
 				clock_count <= 0;
-				sampling <= 1;
-				r_data[current_bit] <= serial;
 				if (current_bit < DATA_BIT_COUNT) begin
+					sampling <= 1;
+					r_data[current_bit] <= serial;
 					current_bit <= current_bit + 1;
-				end
-				else begin
+				end else begin
 					current_bit <= 0;
 					if (PARITY_BIT_COUNT > 0) begin
 						state <= SM_RX_PARITY;
-					end
-					else begin
+					end else begin
 						state <= SM_RX_STOP;
 					end
 				end
@@ -100,19 +97,22 @@ always @(posedge clk) begin
 		SM_RX_STOP: begin
 			// Still starting at the middle of the bit cycle
 			// FIXME this only works with 1 STOP BIT COUNT
-			// the state will transition to idle half a cycle before
-			// it should.
-			r_ready <= 1;
+			// as it will wait for half a cycle only
 			if (serial != 1'b1) begin
 				$display("Bad stop bit");
 			end
-			if (current_bit < STOP_BIT_COUNT-1) begin
-				current_bit <= current_bit + 1;
-			end
-			else begin
-				current_bit <= 0;
-				state <= SM_IDLE;
+			if (clock_count == (CLK_PER_BIT-1)/2) begin
+				if (current_bit < STOP_BIT_COUNT) begin
+					current_bit <= current_bit + 1;
+				end else begin
+					r_ready <= 1;
+					current_bit <= 0;
+					state <= SM_IDLE;
+					sampling <= 0;
+				end
+			end else begin
 				sampling <= 0;
+				clock_count <= clock_count + 1;
 			end
 		end
 	endcase
