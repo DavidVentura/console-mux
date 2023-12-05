@@ -33,6 +33,8 @@ reg sampling = 0;
 assign ready = r_ready;
 assign data = r_data;
 
+localparam HALF_CLK = (CLK_PER_BIT-1)/2;
+
 always @(posedge clk) begin
 	case (state)
 		SM_IDLE: begin
@@ -41,14 +43,13 @@ always @(posedge clk) begin
 				clock_count <= 0;
 				state <= SM_RX_START;
 				current_bit <= 0;
-				r_data <= 0;
+				r_ready <= 0;
 			end
 		end
 		SM_RX_START: begin
-			r_ready <= 0;
 			// The line change might be noise, so we need to validate in half
-			// a clock cycle whether it's still down
-			if (clock_count == (CLK_PER_BIT-1)/2) begin
+			// a bit cycle whether it's still down
+			if (clock_count == HALF_CLK) begin
 				sampling <= 1;
 				if (serial == 1'b0) begin
 					// The line was held down for half a clock cycle, we will
@@ -76,11 +77,10 @@ always @(posedge clk) begin
 			end else begin
 				// At the middle of the data bit
 				clock_count <= 0;
-				if (current_bit < DATA_BIT_COUNT) begin
-					sampling <= 1;
-					r_data[current_bit] <= serial;
-					current_bit <= current_bit + 1;
-				end else begin
+				sampling <= 1;
+				r_data[current_bit] <= serial;
+				current_bit <= current_bit + 1;
+				if (current_bit == DATA_BIT_COUNT) begin
 					current_bit <= 0;
 					if (PARITY_BIT_COUNT > 0) begin
 						state <= SM_RX_PARITY;
@@ -101,7 +101,7 @@ always @(posedge clk) begin
 			if (serial != 1'b1) begin
 				$display("Bad stop bit");
 			end
-			if (clock_count == (CLK_PER_BIT-1)/2) begin
+			if (clock_count == HALF_CLK) begin
 				if (current_bit < STOP_BIT_COUNT) begin
 					current_bit <= current_bit + 1;
 				end else begin
