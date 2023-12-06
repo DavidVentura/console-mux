@@ -1,7 +1,8 @@
 module comm #(parameter CLOCK_PER_BIT = 16, parameter OUTPUT_COUNT = 16)(
 	input clk,
 	input rx_serial_line,
-	output tx_serial_line
+	output tx_serial_line,
+	inout [15:0] enabled_out
 );
 
 reg  tx_data_ready;
@@ -16,7 +17,7 @@ reg  [7:0] rx_data_r;
 
 wire [3:0] in_pins;
 wire [31:0] selectors;
-wire [15:0] enabled_out; // these must be multiples of 8 bit, so they can be transferred
+//wire [15:0] enabled_out; // these must be multiples of 8 bit, so they can be transferred
 reg  [15:0] enabled_out_r = 16'hAA55;
 wire [15:0] out_pins;
 
