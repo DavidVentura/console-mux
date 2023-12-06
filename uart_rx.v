@@ -18,6 +18,7 @@ parameter SM_RX_START 		= 3'b001;
 parameter SM_RX_DATA 		= 3'b010;
 parameter SM_RX_PARITY 		= 3'b011;
 parameter SM_RX_STOP 		= 3'b100;
+parameter SM_ERROR 			= 3'b101;
 
 // Need to over-sample the data line to read its value at the middle of the bit cycle
 reg [$clog2(CLK_PER_BIT)+1:0] clock_count = 0;
@@ -99,7 +100,9 @@ always @(posedge clk) begin
 			// FIXME this only works with 1 STOP BIT COUNT
 			// as it will wait for half a cycle only
 			if (serial != 1'b1) begin
-				$display("Bad stop bit");
+				//$display("Bad stop bit");
+				// An RX line held to 0 will always land here
+				state <= SM_ERROR;
 			end
 			if (clock_count == HALF_CLK) begin
 				if (current_bit < STOP_BIT_COUNT) begin
@@ -114,6 +117,12 @@ always @(posedge clk) begin
 				sampling <= 0;
 				clock_count <= clock_count + 1;
 			end
+		end
+		SM_ERROR: begin
+			current_bit <= 0;
+			r_ready <= 0;
+			clock_count <= 0;
+			state <= SM_IDLE;
 		end
 	endcase
 end
