@@ -41,6 +41,9 @@ always @(posedge clk) begin
 				data_r <= data;
 				done_r <= 0;
 				state <= SM_TX_START;
+			end else begin
+				done_r <= 1;
+				serial_r <= 1'b1; // keep the line high to mark we are not transmitting
 			end
 		end
 		SM_TX_START: begin
