@@ -33,6 +33,8 @@ wire f_empty;
 fifo 										   f(clk, f_w_en, f_adv_r, f_data_in, f_data_out, f_full, f_empty);
 
 
+// COMM state
+reg [3:0] byte_counter = 0;
 reg [3:0] state = SM_IDLE;
 
 localparam COMM_INVALID 		 	= 3'b000;
@@ -44,12 +46,14 @@ localparam COMM_WRITE_PIN_MAP 	 	= 3'b100;
 localparam SM_IDLE 							= 4'b0000;
 localparam SM_OUTPUT_READ_ENABLE_MASK 		= 4'b0001;
 localparam SM_OUTPUT_READ_PIN_MAP 			= 4'b0010;
+localparam SM_OUTPUT_WRITE_ENABLE_MASK 		= 4'b0011;
 
 assign enabled_out = enabled_out_r;
 assign tx_data = tx_data_r;
 
 always @(posedge rx_ready) begin
 	rx_data_r <= rx_data;
+	byte_counter <= byte_counter + 1;
 end
 
 always @(posedge clk) begin
@@ -74,12 +78,16 @@ integer i;
 always @(posedge clk) begin
 	case (state)
 		SM_IDLE: begin
+			byte_counter <= 0;
 			case (rx_data_r)
 				COMM_READ_ENABLE_MASK: begin
 					state <= SM_OUTPUT_READ_ENABLE_MASK;
 				end
 				COMM_READ_PIN_MAP: begin
 					state <= SM_OUTPUT_READ_PIN_MAP;
+				end
+				COMM_WRITE_ENABLE_MASK: begin
+					state <= SM_OUTPUT_WRITE_ENABLE_MASK;
 				end
 			endcase
 			rx_data_r <= COMM_INVALID;
@@ -105,6 +113,10 @@ always @(posedge clk) begin
 				f_w_en <= 0;
 				f_data_in <= 0;
 			end
+		end
+		SM_OUTPUT_WRITE_ENABLE_MASK: begin
+			enabled_out_r[(8*byte_counter)+:8] <= rx_data_r;
+			if (byte_counter == 3) state <= SM_IDLE;
 		end
 	endcase
 end

@@ -53,6 +53,7 @@ module test;
 		run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd); // can run it twice
 		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
 		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
+		// TODO send multibyte somehow
 		#10 $finish;
 
 	end
