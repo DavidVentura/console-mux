@@ -1,5 +1,5 @@
 // Takes 2 clock cycles to propagate a write
-module fifo #(parameter DEPTH=8, WIDTH=8) (
+module fifo #(parameter DEPTH=16, WIDTH=8) (
 	input clk,
 	input w_en,
 	input advance_read_ptr,
@@ -25,13 +25,6 @@ assign full = (w_ptr == DEPTH-1);
 assign empty = (r_ptr == w_ptr);
 
 always @(posedge clk) begin
-	if (rst == 1) begin
-		rst <= 0;
-		w_ptr <= 0;
-		r_ptr <= 0;
-		data_out <= 0;
-	end
-
 	// data_out is constantly updated as an optimization;
 	// the value can be read immediately
 	data_out <= fifo_r[r_ptr];
@@ -43,6 +36,14 @@ always @(posedge clk) begin
 		fifo_r[w_ptr] <= data_in;
 		w_ptr <= w_ptr + 1;
 	end
+end
+
+always @(posedge empty) begin
+	// Reset the FIFO as soon as we advance the read ptr
+	// beyond the valid values
+	w_ptr <= 0;
+	r_ptr <= 0;
+	fifo_r[0] <= 0;
 end
 
 endmodule
