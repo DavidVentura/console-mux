@@ -34,10 +34,17 @@ module test;
 
 	always @(posedge rx_ready) begin
 		received_counter <= received_counter + 1;
-		buffer[((1-received_counter)*8)+:8] = rx_data; // [(pending_tx_bytes)*8-1-:8]
+		buffer[((received_counter)*8)+:8] = rx_data; // [(pending_tx_bytes)*8-1-:8]
 		if (received_counter == 1) begin
 			if (enabled_out != buffer) begin
 				$display("Error: Mismatch in state and reply: %h %h", enabled_out, buffer);
+			end
+			if (^buffer === 1'bX) begin
+				$display("Error: Unknown buffer value: %h %h", enabled_out, buffer);
+				for(integer i=0; i<16; i++) begin
+					if(buffer[i]===1'bX) $display("buffer[%0d] is X",i);
+					if(buffer[i]===1'bZ) $display("buffer[%0d] is Z",i);
+				end
 			end
 			#10 $finish;
 		end

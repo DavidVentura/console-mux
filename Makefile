@@ -1,5 +1,5 @@
 .PHONY: uart_tx lint
-comm: comm.v comm_tb.v uart_rx.v uart_tx.v mux.v Makefile
+comm: comm.v comm_tb.v uart_rx.v uart_tx.v mux.v fifo.v Makefile
 	iverilog -Wall -o $@ $(filter %.v,$^) && ./$@
 
 lint:
