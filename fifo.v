@@ -21,7 +21,7 @@ wire [WIDTH-1:0] dbg_zero = fifo_r[0];
 wire [WIDTH-1:0] dbg_one = fifo_r[1];
 */
 
-assign full = (w_ptr == WIDTH-1);
+assign full = (w_ptr == DEPTH-1);
 assign empty = (r_ptr == w_ptr);
 
 always @(posedge clk) begin
