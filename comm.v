@@ -2,7 +2,7 @@ module comm #(parameter CLOCK_PER_BIT = 16, parameter OUTPUT_COUNT = 16)(
 	input clk,
 	input rx_serial_line,
 	output tx_serial_line,
-	inout [15:0] enabled_out
+	output wire [15:0] enabled_out
 );
 
 reg  tx_data_ready = 0;
@@ -16,7 +16,7 @@ reg  [7:0] rx_data_r;
 
 
 wire [3:0] in_pins;
-wire [31:0] selectors;
+wire [31:0] selectors = 32'haabbccdd;
 //wire [15:0] enabled_out; // these must be multiples of 8 bit, so they can be transferred
 reg  [15:0] enabled_out_r = 16'hAA55;
 wire [15:0] out_pins;
@@ -26,12 +26,12 @@ uart_rx #(.CLK_PER_BIT(CLOCK_PER_BIT)) 		  rx(clk, rx_serial_line, rx_ready, rx_
 mux 	#(.INPUT_COUNT(4), .OUTPUT_COUNT(16)) m1(in_pins, selectors, enabled_out, out_pins);
 
 reg f_w_en = 0;
-reg f_r_en = 0;
+reg f_adv_r = 0;
 reg [7:0] f_data_in = 0;
 wire [7:0] f_data_out;
 wire f_full;
 wire f_empty;
-fifo 										   f(clk, f_w_en, f_r_en, f_data_in, f_data_out, f_full, f_empty);
+fifo 										   f(clk, f_w_en, f_adv_r, f_data_in, f_data_out, f_full, f_empty);
 
 
 reg [3:0] state = SM_IDLE;
@@ -44,6 +44,7 @@ localparam COMM_WRITE_PIN_MAP 	 	= 3'b100;
 
 localparam SM_IDLE 							= 4'b0000;
 localparam SM_OUTPUT_READ_ENABLE_MASK 		= 4'b0001;
+localparam SM_OUTPUT_READ_PIN_MAP 			= 4'b0010;
 
 assign enabled_out = enabled_out_r;
 assign tx_data = tx_data_r;
@@ -54,7 +55,7 @@ end
 
 always @(posedge clk) begin
 	if(tx_data_ready == 1'b1) tx_data_ready <= 0;
-	if(f_r_en == 1'b1) f_r_en <= 0;
+	if(f_adv_r == 1'b1) f_adv_r <= 0;
 end
 
 always @(posedge clk) begin
@@ -63,19 +64,23 @@ always @(posedge clk) begin
 		// data_out always has the value from the last clock cycle
 		// so we still need to wait 1 clock after !empty
 		@(posedge clk) begin
-			f_r_en <= 1;
+			f_adv_r <= 1;
 			tx_data_r <= f_data_out;
 			tx_data_ready <= 1;
 		end
 	end
 end
 
+integer i;
 always @(posedge clk) begin
 	case (state)
 		SM_IDLE: begin
 			case (rx_data_r)
 				COMM_READ_ENABLE_MASK: begin
 					state <= SM_OUTPUT_READ_ENABLE_MASK;
+				end
+				COMM_READ_PIN_MAP: begin
+					state <= SM_OUTPUT_READ_PIN_MAP;
 				end
 			endcase
 			rx_data_r <= COMM_INVALID;
@@ -85,6 +90,18 @@ always @(posedge clk) begin
 			f_w_en <= 1;
 			f_data_in <= enabled_out_r[7:0];
 			@(posedge clk) f_data_in <= enabled_out_r[15:8];
+			@(posedge clk) begin
+				f_w_en <= 0;
+				f_data_in <= 0;
+			end
+		end
+		SM_OUTPUT_READ_PIN_MAP: begin
+			state <= SM_IDLE;
+			f_w_en <= 1;
+			f_data_in <= selectors[7:0];
+			for(i=1; i<4; i++) begin
+				@(posedge clk) f_data_in <= selectors[(8*i)+:8];
+			end
 			@(posedge clk) begin
 				f_w_en <= 0;
 				f_data_in <= 0;
