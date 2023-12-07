@@ -20,25 +20,40 @@ module test;
 	reg [3:0] received_counter = 0;
 
 	reg [31:0] buffer = 0;
+	reg [31:0] expected = 0;
 	reg garbage;
 
 	reg [3:0] wanted_bytes = 0;
 
+	reg tc_done = 0;
 
-	task tc1(input [31:0] expected);
-		#1;
+
+	task run_command(input[3:0] _bytes, input[3:0] command, input [31:0] _expected);
+		begin
+			buffer <= 0;
+			received_counter <= 0;
+			wanted_bytes <= _bytes;
+			tx_data <= command;
+			expected <= _expected;
+			tx_data_ready <= 1;
+			#3;
+			tx_data_ready = 0;
+
+			wait (tc_done == 1);
+			#1;
+			tc_done <= 0;
+			#5;
+		end
 	endtask
 
 	initial begin
 		$dumpfile("test.vcd");
 		$dumpvars(0,test);
-
-		//tx_data <= c.COMM_READ_ENABLE_MASK;
-		wanted_bytes <= 3;
-		tx_data <= c.COMM_READ_PIN_MAP;
-		tx_data_ready <= 1;
-		#3;
-		tx_data_ready = 0;
+		run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd);
+		run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd); // can run it twice
+		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
+		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
+		#10 $finish;
 
 	end
 
@@ -46,22 +61,25 @@ module test;
 		received_counter <= received_counter + 1;
 		buffer[((received_counter)*8)+:8] = rx_data;
 		if (received_counter == wanted_bytes) begin
-			garbage <= compare_buffers(32'haabbccdd, buffer);
-			#10 $finish;
+			// need to assign to something
+			garbage <= compare_buffers(expected, buffer);
+			tc_done <= 1;
 		end
 	end
 
 	function compare_buffers(input [31:0] expected, got);
 		begin
-			if (expected != got) begin
-				$display("Error: expected %h got %h", expected, got);
-			end
 			if (^got === 1'bX) begin
 				$display("Error: Got Unknown %h wanted: %h", got, expected);
 				for(integer i=0; i<32; i++) begin
 					if(got[i]===1'bX) $display("buffer[%0d] is X",i);
 					if(got[i]===1'bZ) $display("buffer[%0d] is Z",i);
 				end
+				$finish;
+			end
+			if (expected != got) begin
+				$display("Error: expected %h got %h", expected, got);
+				$finish;
 			end
 		end
 	endfunction
