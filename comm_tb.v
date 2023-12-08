@@ -27,17 +27,45 @@ module test;
 
 	reg tc_done = 0;
 
+	integer i;
+
+	task send_byte(input[7:0] byte);
+		begin
+			tx_data <= byte;
+			tx_data_ready <= 1;
+			#3;
+			tx_data_ready = 0;
+			wait (tx_done == 1);
+		end
+	endtask
 
 	task run_command(input[3:0] _bytes, input[3:0] command, input [31:0] _expected);
 		begin
 			buffer <= 0;
 			received_counter <= 0;
 			wanted_bytes <= _bytes;
-			tx_data <= command;
 			expected <= _expected;
-			tx_data_ready <= 1;
-			#3;
-			tx_data_ready = 0;
+
+			send_byte(command);
+
+			wait (tc_done == 1);
+			#1;
+			tc_done <= 0;
+			#5;
+		end
+	endtask
+
+	task run_command_2_byte_payload(input[3:0] _bytes, input[3:0] command, input[31:0] payload, input [31:0] _expected);
+		begin
+			buffer <= 0;
+			received_counter <= 0;
+			wanted_bytes <= _bytes;
+			expected <= _expected;
+
+			send_byte(command);
+			for(i=0; i<2; i++) begin
+				send_byte(payload[i*8+:8]);
+			end
 
 			wait (tc_done == 1);
 			#1;
@@ -49,11 +77,13 @@ module test;
 	initial begin
 		$dumpfile("test.vcd");
 		$dumpvars(0,test);
-		run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd);
-		run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd); // can run it twice
-		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
-		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
-		// TODO send multibyte somehow
+		//run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd);
+		//run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd); // can run it twice
+		//run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
+		//run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
+		run_command_2_byte_payload(1, c.COMM_WRITE_ENABLE_MASK, 32'habcd, 32'habcd);
+		run_command(1, c.COMM_READ_ENABLE_MASK, 32'habcd);
+		run_command_2_byte_payload(1, c.COMM_WRITE_ENABLE_MASK, 32'haaaa, 32'haaaa);
 		#10 $finish;
 
 	end

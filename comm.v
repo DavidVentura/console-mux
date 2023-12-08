@@ -115,8 +115,8 @@ always @(posedge clk) begin
 			end
 		end
 		SM_OUTPUT_WRITE_ENABLE_MASK: begin
-			enabled_out_r[(8*byte_counter)+:8] <= rx_data_r;
-			if (byte_counter == 3) state <= SM_IDLE;
+			enabled_out_r[(8*(byte_counter-1))+:8] <= rx_data_r;
+			if (byte_counter == 2) state <= SM_OUTPUT_READ_ENABLE_MASK;
 		end
 	endcase
 end
