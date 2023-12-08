@@ -5,8 +5,11 @@ module test;
 
 	wire serial_tx;
 	wire serial_rx;
-	wire [15:0] enabled_out; // these must be multiples of 8 bit, so they can be transferred
-	comm c(clk, serial_rx, serial_tx, enabled_out);
+	wire [15:0] output_pins;
+	wire [3:0] input_pins;
+	reg [3:0] input_pins_r;
+	assign input_pins = input_pins_r;
+	comm c(clk, serial_rx, serial_tx, output_pins, input_pins);
 
 	reg[7:0] tx_data;
 	reg tx_data_ready;
@@ -97,6 +100,42 @@ module test;
 		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'haaff5500, 32'haaff5500);
 		run_command(3, c.COMM_READ_PIN_MAP, 32'haaff5500);
 		run_command(3, c.COMM_READ_PIN_MAP, 32'haaff5500);
+		// Integration test
+		// 4 input pins
+		// 16 output pins
+		// Each output picks it source:
+		// |O0|O1|O2|..|OF|Notes|
+		// |--|--|--|--|--|-----|
+		// |00|00|00|..|00|All 16 outputs source pin 0|
+		// |01|00|00|..|00|Output 0 sources input pin 1|
+		//
+		// So, map all pins to 0
+		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'h00000000, 32'h00000000);
+		// Set input pin 0 to 0
+		input_pins_r = 0;
+		// Disable output on all of them
+		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 16'h0000, 16'h0000);
+		for(i=0; i<15; i++) begin
+			if (output_pins[i] !== 1'bz) $display("Pin %d, expected z, got %d", i, output_pins[i]);
+		end
+		// Enable output on all of them
+		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 16'hFFFF, 16'hFFFF);
+		for(i=0; i<15; i++) begin
+			if (output_pins[i] !== 1'b0) $display("Pin %d, expected 0, got %d", i, output_pins[i]);
+		end
+		// Change pin 0 to 1, all should now be 1
+		input_pins_r[0] <= 1;
+		#1; // why does this need a delay??
+		for(i=0; i<15; i++) begin
+			if (output_pins[i] !== 1'b1) $display("Pin %d, expected 1, got %d", i, output_pins[i]);
+		end
+		// Change pin mapping: pin 0 sources input pin 1, which is still 0
+		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'h00000001, 32'h00000001);
+		#1; // why does this need a delay??
+		if (output_pins[0] !== 1'b0) $display("Pin %d, expected 0, got %d", 0, output_pins[0]);
+		for(i=1; i<15; i++) begin
+			if (output_pins[i] !== 1'b1) $display("Pin %d, expected 1, got %d", i, output_pins[i]);
+		end
 		#10 $finish;
 
 	end
