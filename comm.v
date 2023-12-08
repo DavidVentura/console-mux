@@ -16,8 +16,9 @@ reg  [7:0] rx_data_r;
 
 
 wire [3:0] in_pins;
-wire [31:0] selectors = 32'haabbccdd;
-reg  [15:0] enabled_out_r = 16'hAA55;// these must be multiples of 8 bit, so they can be transferred
+wire [31:0] selectors;
+reg  [31:0] selectors_r = 0;
+reg  [15:0] enabled_out_r = 0;// selectors and enabled_out must be multiples of 8 bit, so they can be transferred
 wire [15:0] out_pins;
 
 uart_tx #(.CLK_PER_BIT(CLOCK_PER_BIT)) 		  tx(clk, tx_data, tx_data_ready, tx_done, tx_serial_line);
@@ -47,7 +48,9 @@ localparam SM_IDLE 							= 4'b0000;
 localparam SM_OUTPUT_READ_ENABLE_MASK 		= 4'b0001;
 localparam SM_OUTPUT_READ_PIN_MAP 			= 4'b0010;
 localparam SM_OUTPUT_WRITE_ENABLE_MASK 		= 4'b0011;
+localparam SM_OUTPUT_WRITE_PIN_MAP 			= 4'b0100;
 
+assign selectors = selectors_r;
 assign enabled_out = enabled_out_r;
 assign tx_data = tx_data_r;
 
@@ -89,12 +92,16 @@ always @(posedge clk) begin
 				COMM_WRITE_ENABLE_MASK: begin
 					state <= SM_OUTPUT_WRITE_ENABLE_MASK;
 				end
+				COMM_WRITE_PIN_MAP: begin
+					state <= SM_OUTPUT_WRITE_PIN_MAP;
+				end
 			endcase
 			rx_data_r <= COMM_INVALID;
 		end
 		SM_OUTPUT_READ_ENABLE_MASK: begin
 			state <= SM_IDLE;
 			f_w_en <= 1;
+			// TODO dynamic size
 			f_data_in <= enabled_out_r[7:0];
 			@(posedge clk) f_data_in <= enabled_out_r[15:8];
 			@(posedge clk) begin
@@ -105,9 +112,10 @@ always @(posedge clk) begin
 		SM_OUTPUT_READ_PIN_MAP: begin
 			state <= SM_IDLE;
 			f_w_en <= 1;
-			f_data_in <= selectors[7:0];
+			// TODO dynamic size
+			f_data_in <= selectors_r[7:0];
 			for(i=1; i<4; i++) begin
-				@(posedge clk) f_data_in <= selectors[(8*i)+:8];
+				@(posedge clk) f_data_in <= selectors_r[(8*i)+:8];
 			end
 			@(posedge clk) begin
 				f_w_en <= 0;
@@ -115,8 +123,14 @@ always @(posedge clk) begin
 			end
 		end
 		SM_OUTPUT_WRITE_ENABLE_MASK: begin
+			// TODO dynamic size
 			enabled_out_r[(8*(byte_counter-1))+:8] <= rx_data_r;
 			if (byte_counter == 2) state <= SM_OUTPUT_READ_ENABLE_MASK;
+		end
+		SM_OUTPUT_WRITE_PIN_MAP: begin
+			// TODO dynamic size
+			selectors_r[(8*(byte_counter-1))+:8] <= rx_data_r;
+			if (byte_counter == 4) state <= SM_OUTPUT_READ_PIN_MAP;
 		end
 	endcase
 end

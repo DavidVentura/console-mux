@@ -55,7 +55,7 @@ module test;
 		end
 	endtask
 
-	task run_command_2_byte_payload(input[3:0] _bytes, input[3:0] command, input[31:0] payload, input [31:0] _expected);
+	task run_command_with_payload(input[3:0] _bytes, input[3:0] command, input[2:0] bytes_to_send, input[31:0] payload, input [31:0] _expected);
 		begin
 			buffer <= 0;
 			received_counter <= 0;
@@ -63,7 +63,7 @@ module test;
 			expected <= _expected;
 
 			send_byte(command);
-			for(i=0; i<2; i++) begin
+			for(i=0; i<bytes_to_send; i++) begin
 				send_byte(payload[i*8+:8]);
 			end
 
@@ -77,13 +77,26 @@ module test;
 	initial begin
 		$dumpfile("test.vcd");
 		$dumpvars(0,test);
-		//run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd);
-		//run_command(3, c.COMM_READ_PIN_MAP, 32'haabbccdd); // can run it twice
-		//run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
-		//run_command(1, c.COMM_READ_ENABLE_MASK, 32'haa55);
-		run_command_2_byte_payload(1, c.COMM_WRITE_ENABLE_MASK, 32'habcd, 32'habcd);
+		run_command(3, c.COMM_READ_PIN_MAP, 0);
+		run_command(3, c.COMM_READ_PIN_MAP, 0); // can run it twice
+		run_command(1, c.COMM_READ_ENABLE_MASK, 0);
+		run_command(1, c.COMM_READ_ENABLE_MASK, 0);
+
+		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 32'habcd, 32'habcd);
 		run_command(1, c.COMM_READ_ENABLE_MASK, 32'habcd);
-		run_command_2_byte_payload(1, c.COMM_WRITE_ENABLE_MASK, 32'haaaa, 32'haaaa);
+		run_command(1, c.COMM_READ_ENABLE_MASK, 32'habcd);
+
+		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 32'haaaa, 32'haaaa);
+		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haaaa);
+		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haaaa);
+
+		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'h89abcdef, 32'h89abcdef);
+		run_command(3, c.COMM_READ_PIN_MAP, 32'h89abcdef);
+		run_command(3, c.COMM_READ_PIN_MAP, 32'h89abcdef);
+
+		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'haaff5500, 32'haaff5500);
+		run_command(3, c.COMM_READ_PIN_MAP, 32'haaff5500);
+		run_command(3, c.COMM_READ_PIN_MAP, 32'haaff5500);
 		#10 $finish;
 
 	end
