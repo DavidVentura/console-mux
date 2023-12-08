@@ -1,8 +1,9 @@
-module comm #(parameter CLOCK_PER_BIT = 16, parameter OUTPUT_COUNT = 16)(
+module comm #(parameter CLOCK_PER_BIT = 16, parameter OUTPUT_COUNT = 16, parameter INPUT_COUNT = 4)(
 	input clk,
 	input rx_serial_line,
 	output tx_serial_line,
-	output wire [15:0] enabled_out
+	output [OUTPUT_COUNT-1:0] out_pins,
+	input [INPUT_COUNT-1:0] in_pins
 );
 
 reg  tx_data_ready = 0;
@@ -15,15 +16,19 @@ wire [7:0] rx_data;
 reg  [7:0] rx_data_r;
 
 
-wire [3:0] in_pins;
-wire [31:0] selectors;
-reg  [31:0] selectors_r = 0;
-reg  [15:0] enabled_out_r = 0;// selectors and enabled_out must be multiples of 8 bit, so they can be transferred
-wire [15:0] out_pins;
+// Customizable widths
+parameter sel_width = $clog2(INPUT_COUNT)*OUTPUT_COUNT;
+
+// selectors and enabled_out must be multiples of 8 bit, so they can be transferred
+wire [INPUT_COUNT-1:0] in_pins;
+wire [sel_width-1:0] selectors;
+reg  [sel_width-1:0] selectors_r = 0;
+reg  [OUTPUT_COUNT-1:0] enabled_out_r = 0;
+wire [OUTPUT_COUNT-1:0] enabled_out;
 
 uart_tx #(.CLK_PER_BIT(CLOCK_PER_BIT)) 		  tx(clk, tx_data, tx_data_ready, tx_done, tx_serial_line);
 uart_rx #(.CLK_PER_BIT(CLOCK_PER_BIT)) 		  rx(clk, rx_serial_line, rx_ready, rx_data);
-mux 	#(.INPUT_COUNT(4), .OUTPUT_COUNT(16)) m1(in_pins, selectors, enabled_out, out_pins);
+mux 	#(.INPUT_COUNT(INPUT_COUNT), .OUTPUT_COUNT(OUTPUT_COUNT)) m1(in_pins, selectors, enabled_out, out_pins);
 
 reg f_w_en = 0;
 reg f_adv_r = 0;
@@ -31,12 +36,16 @@ reg [7:0] f_data_in = 0;
 wire [7:0] f_data_out;
 wire f_full;
 wire f_empty;
-fifo 										   f(clk, f_w_en, f_adv_r, f_data_in, f_data_out, f_full, f_empty);
+fifo f(clk, f_w_en, f_adv_r, f_data_in, f_data_out, f_full, f_empty);
 
 
 // COMM state
 reg [3:0] byte_counter = 0;
 reg [3:0] state = SM_IDLE;
+
+localparam PIN_MAP_SIZE = sel_width/8; //bitfield->bytes
+localparam OUT_PIN_ENABLE_SIZE = OUTPUT_COUNT/8; //bitfield->bytes
+
 
 localparam COMM_INVALID 		 	= 3'b000;
 localparam COMM_READ_ENABLE_MASK 	= 3'b001;
@@ -101,9 +110,10 @@ always @(posedge clk) begin
 		SM_OUTPUT_READ_ENABLE_MASK: begin
 			state <= SM_IDLE;
 			f_w_en <= 1;
-			// TODO dynamic size
 			f_data_in <= enabled_out_r[7:0];
-			@(posedge clk) f_data_in <= enabled_out_r[15:8];
+			for(i=1; i<OUT_PIN_ENABLE_SIZE; i++) begin
+				@(posedge clk) f_data_in <= enabled_out_r[(8*i)+:8];
+			end
 			@(posedge clk) begin
 				f_w_en <= 0;
 				f_data_in <= 0;
@@ -112,9 +122,8 @@ always @(posedge clk) begin
 		SM_OUTPUT_READ_PIN_MAP: begin
 			state <= SM_IDLE;
 			f_w_en <= 1;
-			// TODO dynamic size
 			f_data_in <= selectors_r[7:0];
-			for(i=1; i<4; i++) begin
+			for(i=1; i<PIN_MAP_SIZE; i++) begin
 				@(posedge clk) f_data_in <= selectors_r[(8*i)+:8];
 			end
 			@(posedge clk) begin
@@ -123,14 +132,14 @@ always @(posedge clk) begin
 			end
 		end
 		SM_OUTPUT_WRITE_ENABLE_MASK: begin
-			// TODO dynamic size
+			// FIXME should double buffer
 			enabled_out_r[(8*(byte_counter-1))+:8] <= rx_data_r;
-			if (byte_counter == 2) state <= SM_OUTPUT_READ_ENABLE_MASK;
+			if (byte_counter == OUT_PIN_ENABLE_SIZE) state <= SM_OUTPUT_READ_ENABLE_MASK;
 		end
 		SM_OUTPUT_WRITE_PIN_MAP: begin
-			// TODO dynamic size
+			// FIXME should double buffer
 			selectors_r[(8*(byte_counter-1))+:8] <= rx_data_r;
-			if (byte_counter == 4) state <= SM_OUTPUT_READ_PIN_MAP;
+			if (byte_counter == PIN_MAP_SIZE) state <= SM_OUTPUT_READ_PIN_MAP;
 		end
 	endcase
 end
