@@ -89,11 +89,9 @@ always @(posedge clk) begin
 	end
 end
 
-integer i;
 always @(posedge clk) begin
 	case (state)
 		SM_IDLE: begin
-			byte_counter <= 0;
 			case (rx_data_r)
 				{5'b00000, COMM_INVALID}: begin
 				end
@@ -113,18 +111,18 @@ always @(posedge clk) begin
 					$display("Got bad IDLE command?: %b", rx_data_r);
 				end
 			endcase
+			byte_counter <= 0;
 			rx_data_r <= 0;
 		end
 		SM_OUTPUT_READ_ENABLE_MASK: begin
-			state <= SM_CLEANUP;
-			f_w_en <= 1;
-			f_data_in <= enabled_out_r[7:0];
-			for(i=1; i<OUT_PIN_ENABLE_SIZE; i=i+1) begin
-				@(posedge clk) f_data_in <= enabled_out_r[(8*i)+:8];
-			end
-			@(posedge clk) begin
+			if (byte_counter<OUT_PIN_ENABLE_SIZE[3:0]) begin
+				f_w_en <= 1;
+				f_data_in <= enabled_out_r[(8*byte_counter)+:8];
+				byte_counter <= byte_counter + 1;
+			end else begin
 				f_w_en <= 0;
 				f_data_in <= 0;
+				state <= SM_CLEANUP;
 			end
 		end
 		SM_OUTPUT_READ_PIN_MAP: begin
@@ -140,8 +138,9 @@ always @(posedge clk) begin
 		end
 		SM_OUTPUT_WRITE_ENABLE_MASK: begin
 			enabled_out_buf[(8*(byte_counter-1))+:8] <= rx_data_r;
-			if ({1'b0, byte_counter} == OUT_PIN_ENABLE_SIZE) begin
+			if (byte_counter == OUT_PIN_ENABLE_SIZE[3:0]) begin
 				state <= SM_OUTPUT_READ_ENABLE_MASK;
+				byte_counter <= 0;
 				@(posedge clk) enabled_out_r <= enabled_out_buf;
 			end
 		end
