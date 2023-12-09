@@ -13,13 +13,12 @@ uart_tx #(.CLK_PER_BIT(CPB)) tx(clk, data, data_ready, done, serial);
 
 initial
 begin
-	$dumpfile("test.vcd");
-	$dumpvars(0,test);
 	data_ready = 0;
 	data = 8'b01100011;
 	data_ready = 1;
 	#1;
 	data_ready = 0;
+	// TODO test
 	#(CPB*21);
 	if (done != 1'b1) begin
 		$display("Error: did not finish transmission");

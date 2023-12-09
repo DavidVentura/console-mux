@@ -22,8 +22,6 @@ integer i;
 initial
 begin
 	tx_data_ready = 0;
-	//$dumpfile("test.vcd");
-	//$dumpvars(0,test);
 	for(i=0; i<256; i=i+1) begin
 		tx_data = i;
 		tx_data_ready = 1;
@@ -31,6 +29,7 @@ begin
 		@(posedge clk); tx_data_ready = 0;
 
 		@(posedge rx_ready);
+		#1;
 	end
 	$finish;
 end
@@ -41,9 +40,6 @@ always @(posedge rx_ready) begin
 
 	if (rx_data != tx_data) begin
 		$display("Error: rx_data %h tx_data %h", rx_data, tx_data);
-	end
-	else begin
-		$display("rx_data matched tx_data, %h=%h", rx_data, tx_data);
 	end
 end
 

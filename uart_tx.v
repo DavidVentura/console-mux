@@ -83,7 +83,7 @@ always @(posedge clk) begin
 				clock_count <= clock_count + 1;
 			end else begin
 				clock_count <= 0;
-				if (current_bit < STOP_BIT_COUNT -1) begin
+				if (current_bit < (STOP_BIT_COUNT-1)) begin
 					current_bit <= current_bit + 1;
 				end else begin
 					current_bit <= 0;

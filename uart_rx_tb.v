@@ -13,12 +13,8 @@ uart_rx #(.CLK_PER_BIT(CPB)) rx(clk, serial_line, ready, data);
 integer i;
 integer k;
 
-//$monitor("clock count %d", clock_count);
 initial
 begin
-	//$dumpfile("test.vcd");
-	//$dumpvars(0,test);
-
 	for(k=0; k<256; k=k+1) begin
 
 		serial_line = 0; // start bit
@@ -35,7 +31,7 @@ begin
 			$display("Error: byte was not ready");
 		end
 		if (data != k) begin
-			$display("Error: k was %b data was %b", k, data);
+			$display("Error at %b: k was %b data was %b", i, k, data);
 		end
 	end
 	$finish;

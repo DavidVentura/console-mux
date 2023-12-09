@@ -29,8 +29,6 @@ reg [DATA_BIT_COUNT-1:0] r_data = 8'b00000000;
 
 reg [3:0] current_bit = 0; // counts data (up to 9) and stop bit (1-2)
 
-reg sampling = 0;
-
 assign ready = r_ready;
 assign data = r_data;
 
@@ -51,7 +49,6 @@ always @(posedge clk) begin
 			// The line change might be noise, so we need to validate in half
 			// a bit cycle whether it's still down
 			if (clock_count == HALF_CLK) begin
-				sampling <= 1;
 				if (serial == 1'b0) begin
 					// The line was held down for half a clock cycle, we will
 					// now start receiving data
@@ -64,7 +61,6 @@ always @(posedge clk) begin
 					state <= SM_IDLE;
 				end
 			end else begin
-				sampling <= 0;
 				clock_count <= clock_count + 1;
 			end
 		end
@@ -74,11 +70,9 @@ always @(posedge clk) begin
 			// middle of the bit cycle
 			if (clock_count < CLK_PER_BIT-1) begin
 				clock_count <= clock_count + 1;
-				sampling <= 0;
 			end else begin
 				// At the middle of the data bit
 				clock_count <= 0;
-				sampling <= 1;
 				r_data[current_bit] <= serial;
 				current_bit <= current_bit + 1;
 				if (current_bit == DATA_BIT_COUNT) begin
@@ -111,10 +105,8 @@ always @(posedge clk) begin
 					r_ready <= 1;
 					current_bit <= 0;
 					state <= SM_IDLE;
-					sampling <= 0;
 				end
 			end else begin
-				sampling <= 0;
 				clock_count <= clock_count + 1;
 			end
 		end

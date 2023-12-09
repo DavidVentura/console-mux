@@ -1,18 +1,26 @@
-.PHONY: uart_tx lint
-comm: comm.v comm_tb.v uart_rx.v uart_tx.v mux.v fifo.v Makefile
-	iverilog -Wall -o $@ $(filter %.v,$^) && ./$@
+.PHONY: test lint
+
+test: uart_rx uart_tx uart_tx_rx comm mux
+	./uart_rx
+	./uart_tx
+	./uart_tx_rx
+	./mux
+	./comm
 
 lint:
 	verilator --timing -Wall -y . --lint-only *.v
 
-uart_tx_rx: uart_tx.v uart_rx.v uart_tb.v Makefile
-	iverilog -Wall -o $@ $(filter %.v,$^) && ./$@
+mux: mux.v mux_tb.v Makefile
+	iverilog -Wall -o $@ $(filter %.v,$^)
 
-uart_tx: uart_tx.v uart_tx_tb.v Makefile
-	iverilog -Wall -o uart_tx uart_tx.v uart_tx_tb.v && ./uart_tx
+comm: comm.v comm_tb.v uart_rx.v uart_tx.v mux.v fifo.v Makefile
+	iverilog -Wall -o $@ $(filter %.v,$^)
+
+uart_tx_rx: uart_tx.v uart_rx.v uart_tb.v Makefile
+	iverilog -Wall -o $@ $(filter %.v,$^)
 
 uart_rx: uart_rx.v uart_rx_tb.v Makefile
-	iverilog -Wall -o uart_rx uart_rx.v uart_rx_tb.v && ./uart_rx
+	iverilog -Wall -o $@ $(filter %.v,$^)
 
-test: mux.v mux_tb.v Makefile
-	iverilog -Wall -o my_design mux.v mux_tb.v && ./my_design
+uart_tx: uart_tx.v uart_tx_tb.v Makefile
+	iverilog -Wall -o $@ $(filter %.v,$^)

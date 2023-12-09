@@ -12,7 +12,6 @@ module fifo #(parameter DEPTH=16, WIDTH=8) (
 reg [$clog2(DEPTH)-1:0] w_ptr = 0;
 reg [$clog2(DEPTH)-1:0] r_ptr = 0;
 reg [WIDTH-1:0] fifo_r[DEPTH:0];
-reg rst = 0;
 
 /*
 wire [WIDTH-1:0] dbg_current_r = fifo_r[r_ptr];

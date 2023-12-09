@@ -95,8 +95,6 @@ module comm_tb;
 	endtask
 
 	initial begin
-		$dumpfile("test.vcd");
-		$dumpvars(0,comm_tb);
 		run_command(3, c.COMM_READ_PIN_MAP, 0);
 		run_command(3, c.COMM_READ_PIN_MAP, 0); // can run it twice
 		run_command(1, c.COMM_READ_ENABLE_MASK, 0);

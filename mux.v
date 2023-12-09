@@ -20,7 +20,7 @@ module mux #(parameter INPUT_COUNT = 16, parameter OUTPUT_COUNT = 16)(
 	genvar i;
 	generate
 		for (i=0; i<OUTPUT_COUNT; i=i+1) begin
-			wire[3:0] source_for_i = selectors[(i+1)*SEL_WIDTH-1:i*SEL_WIDTH];
+			wire[$clog2(INPUT_COUNT)-1:0] source_for_i = selectors[(i+1)*SEL_WIDTH-1:i*SEL_WIDTH];
 			assign out[i] = enabled_out[i] ? sources[source_for_i] : 1'bz;
 		end
 	endgenerate

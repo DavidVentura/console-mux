@@ -26,8 +26,8 @@ module mux_tb;
 
 	assign enabled_out = enabled_out_r;
 
-	initial $monitor("%d, gpios %b, sel0 %d, sel1 %d, out0 %d, out1 %d", $time, gpios, selectors[3:0], selectors[7:4], out[0], out[1]);
 	initial begin
+		// TODO test
 		enabled_out_r =  4'b0011;
 		#1 selectors[7:4] = 1;
 
@@ -46,10 +46,4 @@ module mux_tb;
 
 	mux #( .INPUT_COUNT(4), .OUTPUT_COUNT(4) ) m1 (gpios, selectors, enabled_out, out);
 
-
-	initial
-	begin
-		$dumpfile("test.vcd");
-		$dumpvars(0,mux_tb);
-	end
 endmodule
