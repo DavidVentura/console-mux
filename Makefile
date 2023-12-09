@@ -1,7 +1,9 @@
-.PHONY: test lint
+.PHONY: test lint clean
 
 test: uart_rx_tb uart_tx_tb uart_tb comm_tb mux_tb
 	:
+clean:
+	rm -f uart_rx_tb uart_tx_tb uart_tb comm_tb mux_tb
 
 lint:
 	verilator --top-module comm --timing -Wall -y . --lint-only *.v
