@@ -20,7 +20,6 @@ reg  [7:0] rx_data_r;
 parameter sel_width = $clog2(INPUT_COUNT)*OUTPUT_COUNT;
 
 // selectors and enabled_out must be multiples of 8 bit, so they can be transferred
-wire [INPUT_COUNT-1:0] in_pins;
 wire [sel_width-1:0] selectors;
 reg  [sel_width-1:0] selectors_r = 0;
 reg  [sel_width-1:0] selectors_buf = 0;
@@ -112,7 +111,7 @@ always @(posedge clk) begin
 			state <= SM_IDLE;
 			f_w_en <= 1;
 			f_data_in <= enabled_out_r[7:0];
-			for(i=1; i<OUT_PIN_ENABLE_SIZE; i++) begin
+			for(i=1; i<OUT_PIN_ENABLE_SIZE; i=i+1) begin
 				@(posedge clk) f_data_in <= enabled_out_r[(8*i)+:8];
 			end
 			@(posedge clk) begin
@@ -124,7 +123,7 @@ always @(posedge clk) begin
 			state <= SM_IDLE;
 			f_w_en <= 1;
 			f_data_in <= selectors_r[7:0];
-			for(i=1; i<PIN_MAP_SIZE; i++) begin
+			for(i=1; i<PIN_MAP_SIZE; i=i+1) begin
 				@(posedge clk) f_data_in <= selectors_r[(8*i)+:8];
 			end
 			@(posedge clk) begin

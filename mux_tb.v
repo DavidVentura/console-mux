@@ -1,4 +1,4 @@
-module test;
+module mux_tb;
 	reg clk = 0;
 
 	reg  [7:0] selectors;
@@ -6,22 +6,22 @@ module test;
 	wire [3:0] enabled_out;
 	reg  [3:0] enabled_out_r;
 
-	wire [3:0] gpios = {a,b,c,d};
-
-	// Counter and a-d are used to generate test input values
-	reg  [3:0] counter = 0;
 	reg a;
 	reg b;
 	reg c;
 	reg d;
+	wire [3:0] gpios = {a,b,c,d};
+
+	// Counter and a-d are used to generate test input values
+	reg  [3:0] counter = 0;
 
 	always #1 begin
-		clk = !clk;
-		counter = (counter+1) % 16;
-		d = (counter & 4'b0001) == 4'b0001;
-		c = (counter & 4'b0010) == 4'b0010;
-		b = (counter & 4'b0100) == 4'b0100;
-		a = (counter & 4'b1000) == 4'b1000;
+		clk <= !clk;
+		counter <= (counter+1) % 16;
+		d <= (counter & 4'b0001) == 4'b0001;
+		c <= (counter & 4'b0010) == 4'b0010;
+		b <= (counter & 4'b0100) == 4'b0100;
+		a <= (counter & 4'b1000) == 4'b1000;
 	end
 
 	assign enabled_out = enabled_out_r;
@@ -47,9 +47,9 @@ module test;
 	mux #( .INPUT_COUNT(4), .OUTPUT_COUNT(4) ) m1 (gpios, selectors, enabled_out, out);
 
 
-initial
-begin
-   $dumpfile("test.vcd");
-   $dumpvars(0,test);
-end
+	initial
+	begin
+		$dumpfile("test.vcd");
+		$dumpvars(0,mux_tb);
+	end
 endmodule

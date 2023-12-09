@@ -1,4 +1,4 @@
-module test;
+module uart_tb;
 
 reg clk = 0;
 wire serial_line;
@@ -10,7 +10,7 @@ reg [7:0] tx_data;
 wire rx_ready;
 wire [7:0] rx_data;
 
-always #1 clk = !clk;
+always #1 clk <= !clk;
 
 parameter CPB = 100;
 uart_tx #(.CLK_PER_BIT(CPB)) tx(clk, tx_data, tx_data_ready, tx_done, serial_line);
@@ -21,17 +21,14 @@ reg [7:0] test_data = 8'b01100011;
 integer i;
 initial
 begin
-	tx_data_ready <= 0;
+	tx_data_ready = 0;
 	//$dumpfile("test.vcd");
 	//$dumpvars(0,test);
-
-	//for(i=8'h7d; i<8'h82; i++) begin
-	for(i=0; i<256; i++) begin
-		//tx_data <= 8'b00101010;
-		tx_data <= i;
-		tx_data_ready <= 1;
+	for(i=0; i<256; i=i+1) begin
+		tx_data = i;
+		tx_data_ready = 1;
 		#2;
-		@(posedge clk); tx_data_ready <= 0;
+		@(posedge clk); tx_data_ready = 0;
 
 		@(posedge rx_ready);
 	end

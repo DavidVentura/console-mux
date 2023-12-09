@@ -3,7 +3,7 @@ comm: comm.v comm_tb.v uart_rx.v uart_tx.v mux.v fifo.v Makefile
 	iverilog -Wall -o $@ $(filter %.v,$^) && ./$@
 
 lint:
-	verilator -Wall -y . --lint-only *.v
+	verilator --timing -Wall -y . --lint-only *.v
 
 uart_tx_rx: uart_tx.v uart_rx.v uart_tb.v Makefile
 	iverilog -Wall -o $@ $(filter %.v,$^) && ./$@

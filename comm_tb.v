@@ -1,6 +1,6 @@
-module test;
+module comm_tb;
 	reg clk = 0;
-	always #1 clk = ~clk;
+	always #1 clk <= ~clk;
 	localparam CLOCK_PER_BIT = 16;
 
 	wire serial_tx;
@@ -32,54 +32,71 @@ module test;
 
 	integer i;
 
-	task send_byte(input[7:0] byte);
+	function compare_buffers(input [31:0] _expected, got);
 		begin
-			tx_data <= byte;
-			tx_data_ready <= 1;
+			if (^got === 1'bX) begin
+				$display("Error: Got Unknown %h wanted: %h", got, _expected);
+				for(i=0; i<32; i=i+1) begin
+					if(got[i]===1'bX) $display("buffer[%0d] is X",i);
+					if(got[i]===1'bZ) $display("buffer[%0d] is Z",i);
+				end
+				$finish;
+			end
+			if (_expected != got) begin
+				$display("Error: expected %h got %h", _expected, got);
+				$finish;
+			end
+		end
+	endfunction
+
+	task send_byte(input[7:0] xbyte);
+		begin
+			tx_data = xbyte;
+			tx_data_ready = 1;
 			#3;
 			tx_data_ready = 0;
 			wait (tx_done == 1);
 		end
 	endtask
 
-	task run_command(input[3:0] _bytes, input[3:0] command, input [31:0] _expected);
+	task run_command(input[3:0] _bytes, input[2:0] command, input [31:0] _expected);
 		begin
-			buffer <= 0;
-			received_counter <= 0;
-			wanted_bytes <= _bytes;
-			expected <= _expected;
+			buffer = 0;
+			received_counter = 0;
+			wanted_bytes = _bytes;
+			expected = _expected;
 
 			send_byte(command);
 
 			wait (tc_done == 1);
 			#1;
-			tc_done <= 0;
+			tc_done = 0;
 			#5;
 		end
 	endtask
 
-	task run_command_with_payload(input[3:0] _bytes, input[3:0] command, input[2:0] bytes_to_send, input[31:0] payload, input [31:0] _expected);
+	task run_command_with_payload(input[3:0] _bytes, input[2:0] command, input[2:0] bytes_to_send, input[31:0] payload, input [31:0] _expected);
 		begin
-			buffer <= 0;
-			received_counter <= 0;
-			wanted_bytes <= _bytes;
-			expected <= _expected;
+			buffer = 0;
+			received_counter = 0;
+			wanted_bytes = _bytes;
+			expected = _expected;
 
 			send_byte(command);
-			for(i=0; i<bytes_to_send; i++) begin
+			for(i=0; i<bytes_to_send; i=i+1) begin
 				send_byte(payload[i*8+:8]);
 			end
 
 			wait (tc_done == 1);
 			#1;
-			tc_done <= 0;
+			tc_done = 0;
 			#5;
 		end
 	endtask
 
 	initial begin
 		$dumpfile("test.vcd");
-		$dumpvars(0,test);
+		$dumpvars(0,comm_tb);
 		run_command(3, c.COMM_READ_PIN_MAP, 0);
 		run_command(3, c.COMM_READ_PIN_MAP, 0); // can run it twice
 		run_command(1, c.COMM_READ_ENABLE_MASK, 0);
@@ -115,25 +132,25 @@ module test;
 		input_pins_r = 0;
 		// Disable output on all of them
 		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 16'h0000, 16'h0000);
-		for(i=0; i<15; i++) begin
+		for(i=0; i<15; i=i+1) begin
 			if (output_pins[i] !== 1'bz) $display("Pin %d, expected z, got %d", i, output_pins[i]);
 		end
 		// Enable output on all of them
 		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 16'hFFFF, 16'hFFFF);
-		for(i=0; i<15; i++) begin
+		for(i=0; i<15; i=i+1) begin
 			if (output_pins[i] !== 1'b0) $display("Pin %d, expected 0, got %d", i, output_pins[i]);
 		end
 		// Change pin 0 to 1, all should now be 1
-		input_pins_r[0] <= 1;
+		input_pins_r[0] = 1;
 		#1; // why does this need a delay??
-		for(i=0; i<15; i++) begin
+		for(i=0; i<15; i=i+1) begin
 			if (output_pins[i] !== 1'b1) $display("Pin %d, expected 1, got %d", i, output_pins[i]);
 		end
 		// Change pin mapping: pin 0 sources input pin 1, which is still 0
 		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'h00000001, 32'h00000001);
 		#1; // why does this need a delay??
 		if (output_pins[0] !== 1'b0) $display("Pin %d, expected 0, got %d", 0, output_pins[0]);
-		for(i=1; i<15; i++) begin
+		for(i=1; i<15; i=i+1) begin
 			if (output_pins[i] !== 1'b1) $display("Pin %d, expected 1, got %d", i, output_pins[i]);
 		end
 		#10 $finish;
@@ -150,20 +167,4 @@ module test;
 		end
 	end
 
-	function compare_buffers(input [31:0] expected, got);
-		begin
-			if (^got === 1'bX) begin
-				$display("Error: Got Unknown %h wanted: %h", got, expected);
-				for(integer i=0; i<32; i++) begin
-					if(got[i]===1'bX) $display("buffer[%0d] is X",i);
-					if(got[i]===1'bZ) $display("buffer[%0d] is Z",i);
-				end
-				$finish;
-			end
-			if (expected != got) begin
-				$display("Error: expected %h got %h", expected, got);
-				$finish;
-			end
-		end
-	endfunction
 endmodule
