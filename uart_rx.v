@@ -103,7 +103,6 @@ always @(posedge clk) begin
 					clock_count <= 0;
 					if ({1'b0, current_bit} == (STOP_BIT_COUNT-1)) begin
 						state <= SM_CLEANUP;
-						r_ready <= 1;
 					end else begin
 						current_bit <= current_bit + 1;
 					end
@@ -116,6 +115,7 @@ always @(posedge clk) begin
 			if (clock_count < HALF_CLK) begin
 				clock_count <= clock_count + 1;
 			end else begin
+				r_ready <= 1;
 				clock_count <= 0;
 				state <= SM_IDLE;
 			end
