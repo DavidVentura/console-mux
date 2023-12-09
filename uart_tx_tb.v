@@ -14,8 +14,6 @@ uart_tx #(.CLK_PER_BIT(CPB)) tx(clk, data, data_ready, done, serial);
 
 initial
 begin
-	$dumpfile("test.vcd");
-	$dumpvars(0,uart_tx_tb);
 
 	#100; 
 	data_ready = 0;
