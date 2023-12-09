@@ -24,7 +24,6 @@ module comm_tb;
 
 	reg [31:0] buffer = 0;
 	reg [31:0] expected = 0;
-	reg garbage;
 
 	reg [3:0] wanted_bytes = 0;
 
@@ -32,19 +31,20 @@ module comm_tb;
 
 	integer i;
 
-	function compare_buffers(input [31:0] _expected, got);
+	function buffers_match(input [31:0] _expected, got);
 		begin
+			buffers_match = 1;
 			if (^got === 1'bX) begin
 				$display("Error: Got Unknown %h wanted: %h", got, _expected);
 				for(i=0; i<32; i=i+1) begin
 					if(got[i]===1'bX) $display("buffer[%0d] is X",i);
 					if(got[i]===1'bZ) $display("buffer[%0d] is Z",i);
 				end
-				$finish;
+				buffers_match = 0;
 			end
 			if (_expected != got) begin
 				$display("Error: expected %h got %h", _expected, got);
-				$finish;
+				buffers_match = 0;
 			end
 		end
 	endfunction
@@ -66,7 +66,7 @@ module comm_tb;
 			wanted_bytes = _bytes;
 			expected = _expected;
 
-			send_byte(command);
+			send_byte({5'b0000, command});
 
 			wait (tc_done == 1);
 			#1;
@@ -82,7 +82,7 @@ module comm_tb;
 			wanted_bytes = _bytes;
 			expected = _expected;
 
-			send_byte(command);
+			send_byte({5'b0000, command});
 			for(i=0; i<bytes_to_send; i=i+1) begin
 				send_byte(payload[i*8+:8]);
 			end
@@ -95,26 +95,26 @@ module comm_tb;
 	endtask
 
 	initial begin
-		run_command(3, c.COMM_READ_PIN_MAP, 0);
-		run_command(3, c.COMM_READ_PIN_MAP, 0); // can run it twice
-		run_command(1, c.COMM_READ_ENABLE_MASK, 0);
-		run_command(1, c.COMM_READ_ENABLE_MASK, 0);
+		run_command(4, c.COMM_READ_PIN_MAP, 0);
+		run_command(4, c.COMM_READ_PIN_MAP, 0); // can run it twice
+		run_command(2, c.COMM_READ_ENABLE_MASK, 0);
+		run_command(2, c.COMM_READ_ENABLE_MASK, 0);
 
-		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 32'habcd, 32'habcd);
-		run_command(1, c.COMM_READ_ENABLE_MASK, 32'habcd);
-		run_command(1, c.COMM_READ_ENABLE_MASK, 32'habcd);
+		run_command_with_payload(2, c.COMM_WRITE_ENABLE_MASK, 2, 32'habcd, 32'habcd);
+		run_command(2, c.COMM_READ_ENABLE_MASK, 32'habcd);
+		run_command(2, c.COMM_READ_ENABLE_MASK, 32'habcd);
 
-		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 32'haaaa, 32'haaaa);
-		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haaaa);
-		run_command(1, c.COMM_READ_ENABLE_MASK, 32'haaaa);
+		run_command_with_payload(2, c.COMM_WRITE_ENABLE_MASK, 2, 32'haaaa, 32'haaaa);
+		run_command(2, c.COMM_READ_ENABLE_MASK, 32'haaaa);
+		run_command(2, c.COMM_READ_ENABLE_MASK, 32'haaaa);
 
-		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'h89abcdef, 32'h89abcdef);
-		run_command(3, c.COMM_READ_PIN_MAP, 32'h89abcdef);
-		run_command(3, c.COMM_READ_PIN_MAP, 32'h89abcdef);
+		run_command_with_payload(4, c.COMM_WRITE_PIN_MAP, 4, 32'h89abcdef, 32'h89abcdef);
+		run_command(4, c.COMM_READ_PIN_MAP, 32'h89abcdef);
+		run_command(4, c.COMM_READ_PIN_MAP, 32'h89abcdef);
 
-		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'haaff5500, 32'haaff5500);
-		run_command(3, c.COMM_READ_PIN_MAP, 32'haaff5500);
-		run_command(3, c.COMM_READ_PIN_MAP, 32'haaff5500);
+		run_command_with_payload(4, c.COMM_WRITE_PIN_MAP, 4, 32'haaff5500, 32'haaff5500);
+		run_command(4, c.COMM_READ_PIN_MAP, 32'haaff5500);
+		run_command(4, c.COMM_READ_PIN_MAP, 32'haaff5500);
 		// Integration test
 		// 4 input pins
 		// 16 output pins
@@ -125,16 +125,16 @@ module comm_tb;
 		// |01|00|00|..|00|Output 0 sources input pin 1|
 		//
 		// So, map all pins to 0
-		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'h00000000, 32'h00000000);
+		run_command_with_payload(4, c.COMM_WRITE_PIN_MAP, 4, 32'h00000000, 32'h00000000);
 		// Set input pin 0 to 0
 		input_pins_r = 0;
 		// Disable output on all of them
-		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 16'h0000, 16'h0000);
+		run_command_with_payload(2, c.COMM_WRITE_ENABLE_MASK, 2, 32'h0000, 32'h0000);
 		for(i=0; i<15; i=i+1) begin
 			if (output_pins[i] !== 1'bz) $display("Pin %d, expected z, got %d", i, output_pins[i]);
 		end
 		// Enable output on all of them
-		run_command_with_payload(1, c.COMM_WRITE_ENABLE_MASK, 2, 16'hFFFF, 16'hFFFF);
+		run_command_with_payload(2, c.COMM_WRITE_ENABLE_MASK, 2, 32'hFFFF, 32'hFFFF);
 		for(i=0; i<15; i=i+1) begin
 			if (output_pins[i] !== 1'b0) $display("Pin %d, expected 0, got %d", i, output_pins[i]);
 		end
@@ -145,7 +145,7 @@ module comm_tb;
 			if (output_pins[i] !== 1'b1) $display("Pin %d, expected 1, got %d", i, output_pins[i]);
 		end
 		// Change pin mapping: pin 0 sources input pin 1, which is still 0
-		run_command_with_payload(3, c.COMM_WRITE_PIN_MAP, 4, 32'h00000001, 32'h00000001);
+		run_command_with_payload(4, c.COMM_WRITE_PIN_MAP, 4, 32'h00000001, 32'h00000001);
 		#1; // why does this need a delay??
 		if (output_pins[0] !== 1'b0) $display("Pin %d, expected 0, got %d", 0, output_pins[0]);
 		for(i=1; i<15; i=i+1) begin
@@ -156,12 +156,16 @@ module comm_tb;
 	end
 
 	always @(posedge rx_ready) begin
-		received_counter <= received_counter + 1;
-		buffer[((received_counter)*8)+:8] = rx_data;
-		if (received_counter == wanted_bytes) begin
-			// need to assign to something
-			garbage <= compare_buffers(expected, buffer);
+		buffer[((received_counter)*8)+:8] <= rx_data;
+		if (received_counter == wanted_bytes-1) begin
+			@(posedge clk); // buffer is not propagated until next clock cycle
+			if(buffers_match(expected, buffer)==0) begin
+				#10 $finish;
+			end
+			received_counter <= 0;
 			tc_done <= 1;
+		end else begin
+			received_counter <= received_counter + 1;
 		end
 	end
 

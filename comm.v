@@ -35,7 +35,9 @@ reg f_w_en = 0;
 reg f_adv_r = 0;
 reg [7:0] f_data_in = 0;
 wire [7:0] f_data_out;
+/* verilator lint_off UNUSEDSIGNAL */
 wire f_full;
+/* verilator lint_on UNUSEDSIGNAL */
 wire f_empty;
 fifo f(clk, f_w_en, f_adv_r, f_data_in, f_data_out, f_full, f_empty);
 
@@ -54,6 +56,7 @@ localparam SM_OUTPUT_READ_ENABLE_MASK 		= 4'b0001;
 localparam SM_OUTPUT_READ_PIN_MAP 			= 4'b0010;
 localparam SM_OUTPUT_WRITE_ENABLE_MASK 		= 4'b0011;
 localparam SM_OUTPUT_WRITE_PIN_MAP 			= 4'b0100;
+localparam SM_CLEANUP 						= 4'b0101;
 
 // COMM state
 reg [3:0] byte_counter = 0;
@@ -92,23 +95,28 @@ always @(posedge clk) begin
 		SM_IDLE: begin
 			byte_counter <= 0;
 			case (rx_data_r)
-				COMM_READ_ENABLE_MASK: begin
+				{5'b00000, COMM_INVALID}: begin
+				end
+				{5'b00000, COMM_READ_ENABLE_MASK}: begin
 					state <= SM_OUTPUT_READ_ENABLE_MASK;
 				end
-				COMM_READ_PIN_MAP: begin
+				{5'b00000, COMM_READ_PIN_MAP}: begin
 					state <= SM_OUTPUT_READ_PIN_MAP;
 				end
-				COMM_WRITE_ENABLE_MASK: begin
+				{5'b00000, COMM_WRITE_ENABLE_MASK}: begin
 					state <= SM_OUTPUT_WRITE_ENABLE_MASK;
 				end
-				COMM_WRITE_PIN_MAP: begin
+				{5'b00000, COMM_WRITE_PIN_MAP}: begin
 					state <= SM_OUTPUT_WRITE_PIN_MAP;
 				end
+				default: begin
+					$display("Got bad IDLE command?: %b", rx_data_r);
+				end
 			endcase
-			rx_data_r <= COMM_INVALID;
+			rx_data_r <= 0;
 		end
 		SM_OUTPUT_READ_ENABLE_MASK: begin
-			state <= SM_IDLE;
+			state <= SM_CLEANUP;
 			f_w_en <= 1;
 			f_data_in <= enabled_out_r[7:0];
 			for(i=1; i<OUT_PIN_ENABLE_SIZE; i=i+1) begin
@@ -120,7 +128,7 @@ always @(posedge clk) begin
 			end
 		end
 		SM_OUTPUT_READ_PIN_MAP: begin
-			state <= SM_IDLE;
+			state <= SM_CLEANUP;
 			f_w_en <= 1;
 			f_data_in <= selectors_r[7:0];
 			for(i=1; i<PIN_MAP_SIZE; i=i+1) begin
@@ -133,17 +141,27 @@ always @(posedge clk) begin
 		end
 		SM_OUTPUT_WRITE_ENABLE_MASK: begin
 			enabled_out_buf[(8*(byte_counter-1))+:8] <= rx_data_r;
-			if (byte_counter == OUT_PIN_ENABLE_SIZE) begin
+			if ({1'b0, byte_counter} == OUT_PIN_ENABLE_SIZE) begin
 				state <= SM_OUTPUT_READ_ENABLE_MASK;
 				@(posedge clk) enabled_out_r <= enabled_out_buf;
 			end
 		end
 		SM_OUTPUT_WRITE_PIN_MAP: begin
 			selectors_buf[(8*(byte_counter-1))+:8] <= rx_data_r;
-			if (byte_counter == PIN_MAP_SIZE) begin
+			if (byte_counter == PIN_MAP_SIZE[3:0]) begin
 				state <= SM_OUTPUT_READ_PIN_MAP;
 				@(posedge clk) selectors_r <= selectors_buf;
 			end
+		end
+		SM_CLEANUP: begin
+			// Clear the received command, so that SM_IDLE
+			// doesn't need to deal with the leftovers of the data (not
+			// commands!) in the register
+			rx_data_r <= {5'b00000, COMM_INVALID};
+			state <= SM_IDLE;
+		end
+		default: begin
+			state <= SM_CLEANUP;
 		end
 	endcase
 end
