@@ -128,15 +128,14 @@ always @(posedge clk) begin
 			end
 		end
 		SM_OUTPUT_READ_PIN_MAP: begin
-			state <= SM_CLEANUP;
-			f_w_en <= 1;
-			f_data_in <= selectors_r[7:0];
-			for(i=1; i<PIN_MAP_SIZE; i=i+1) begin
-				@(posedge clk) f_data_in <= selectors_r[(8*i)+:8];
-			end
-			@(posedge clk) begin
+			if (byte_counter<PIN_MAP_SIZE[3:0]) begin
+				f_w_en <= 1;
+				f_data_in <= selectors_r[(8*byte_counter)+:8];
+				byte_counter <= byte_counter + 1;
+			end else begin
 				f_w_en <= 0;
 				f_data_in <= 0;
+				state <= SM_CLEANUP;
 			end
 		end
 		SM_OUTPUT_WRITE_ENABLE_MASK: begin
@@ -150,6 +149,7 @@ always @(posedge clk) begin
 			selectors_buf[(8*(byte_counter-1))+:8] <= rx_data_r;
 			if (byte_counter == PIN_MAP_SIZE[3:0]) begin
 				state <= SM_OUTPUT_READ_PIN_MAP;
+				byte_counter <= 0;
 				@(posedge clk) selectors_r <= selectors_buf;
 			end
 		end
