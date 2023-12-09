@@ -15,8 +15,6 @@ integer k;
 
 initial
 begin
-	$dumpfile("test.vcd");
-	$dumpvars(0,uart_rx_tb);
 
 	for(k=0; k<256; k=k+1) begin
 
