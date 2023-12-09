@@ -1,6 +1,7 @@
-my_design
-uart_rx
-uart_tx
-uart_tx_rx
+uart_rx_tb
+uart_tx_tb
 *vcd
-comm
+*.gtkw
+comm_tb
+mux_tb
+uart_tb
