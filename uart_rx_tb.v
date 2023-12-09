@@ -2,7 +2,7 @@ module uart_rx_tb;
 
 reg clk = 0;
 reg serial_line = 1;
-wire ready = 0;
+wire ready;
 wire [7:0] data;
 
 always #1 clk <= !clk;
@@ -15,6 +15,9 @@ integer k;
 
 initial
 begin
+	$dumpfile("test.vcd");
+	$dumpvars(0,uart_rx_tb);
+
 	for(k=0; k<256; k=k+1) begin
 
 		serial_line = 0; // start bit
@@ -25,12 +28,14 @@ begin
 		end
 
 		serial_line = 1'b1; // stop bit
-		#(CPB*3);
+		#(CPB*2); // 1 bit count samples the stop bit
+		#(CPB*2);
 
-		if (ready != 1'b1) begin
-			$display("Error: byte was not ready");
+		if (ready !== 1'b1) begin
+			$display("Error: byte %d was not ready", k);
+			$finish;
 		end
-		if (data != k) begin
+		if (data !== k) begin
 			$display("Error at %b: k was %b data was %b", i, k, data);
 		end
 	end

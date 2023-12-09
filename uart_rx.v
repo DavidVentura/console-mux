@@ -19,15 +19,15 @@ parameter SM_RX_DATA 		= 3'b010;
 parameter SM_RX_PARITY 		= 3'b011;
 parameter SM_RX_STOP 		= 3'b100;
 parameter SM_ERROR 			= 3'b101;
+parameter SM_CLEANUP 		= 3'b111;
 
 // Need to over-sample the data line to read its value at the middle of the bit cycle
 reg [$clog2(CLK_PER_BIT)+1:0] clock_count = 0;
 reg [2:0] state = SM_IDLE;
 
-reg r_ready = 0;
-reg [DATA_BIT_COUNT-1:0] r_data = 8'b00000000;
-
-reg [3:0] current_bit = 0; // counts data (up to 9) and stop bit (1-2)
+reg r_ready;
+reg [DATA_BIT_COUNT-1:0] r_data = 255;
+reg [$clog2(DATA_BIT_COUNT)-1:0] current_bit = 0;
 
 assign ready = r_ready;
 assign data = r_data;
@@ -74,8 +74,9 @@ always @(posedge clk) begin
 				// At the middle of the data bit
 				clock_count <= 0;
 				r_data[current_bit] <= serial;
-				current_bit <= current_bit + 1;
-				if (current_bit == DATA_BIT_COUNT) begin
+				if ({1'b0, current_bit} < (DATA_BIT_COUNT-1)) begin
+					current_bit <= current_bit + 1;
+				end else begin
 					current_bit <= 0;
 					if (PARITY_BIT_COUNT > 0) begin
 						state <= SM_RX_PARITY;
@@ -90,24 +91,33 @@ always @(posedge clk) begin
 			$finish;
 		end
 		SM_RX_STOP: begin
-			// Still starting at the middle of the bit cycle
-			// FIXME this only works with 1 STOP BIT COUNT
-			// as it will wait for half a cycle only
-			if (serial != 1'b1) begin
-				//$display("Bad stop bit");
-				// An RX line held to 0 will always land here
-				state <= SM_ERROR;
-			end
-			if (clock_count == HALF_CLK) begin
-				if (current_bit < STOP_BIT_COUNT) begin
-					current_bit <= current_bit + 1;
-				end else begin
-					r_ready <= 1;
-					current_bit <= 0;
-					state <= SM_IDLE;
-				end
-			end else begin
+			// Transition to STOP at the middle of a DATA bit
+			// Wait 1 bit cycle to sample the STOP bit at the middle
+			if (clock_count < CLK_PER_BIT-1) begin
 				clock_count <= clock_count + 1;
+			end else begin
+				if (serial != 1'b1) begin
+					// An RX line held to 0 will always land here
+					state <= SM_ERROR;
+				end else begin
+					clock_count <= 0;
+					if ({1'b0, current_bit} == (STOP_BIT_COUNT-1)) begin
+						state <= SM_CLEANUP;
+						r_ready <= 1;
+					end else begin
+						current_bit <= current_bit + 1;
+					end
+				end
+			end
+		end
+		SM_CLEANUP: begin
+			// Wait half a cycle for the STOP bit to finish
+			current_bit <= 0;
+			if (clock_count < HALF_CLK) begin
+				clock_count <= clock_count + 1;
+			end else begin
+				clock_count <= 0;
+				state <= SM_IDLE;
 			end
 		end
 		SM_ERROR: begin
@@ -115,6 +125,9 @@ always @(posedge clk) begin
 			r_ready <= 0;
 			clock_count <= 0;
 			state <= SM_IDLE;
+		end
+		default: begin
+			state <= SM_ERROR;
 		end
 	endcase
 end
