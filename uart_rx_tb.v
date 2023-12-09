@@ -33,7 +33,7 @@ begin
 			$display("Error: byte %d was not ready", k);
 			$finish;
 		end
-		if (data !== k) begin
+		if (data !== k[7:0]) begin
 			$display("Error at %b: k was %b data was %b", i, k, data);
 		end
 	end
