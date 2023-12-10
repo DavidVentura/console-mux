@@ -75,7 +75,8 @@ always @(posedge clk) begin
 			end
 		end
 		SM_TX_PARITY: begin
-			$finish;
+			// TODO
+			state <= SM_IDLE;
 		end
 		SM_TX_STOP: begin
 			// Hold serial down for the entire cycle

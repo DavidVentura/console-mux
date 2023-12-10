@@ -12,11 +12,10 @@ wire  [7:0] tx_data;
 reg   [7:0] tx_data_r = 8'b11111111;
 
 wire rx_ready;
-wire [7:0] rx_data;
-/* verilator lint_off MULTIDRIVEN */
-reg  [7:0] rx_data_r;
-/* verilator lint_on MULTIDRIVEN */
+reg rx_ready_delay = 0;
 
+wire [7:0] rx_data;
+reg  [7:0] rx_data_r;
 
 // Customizable widths
 parameter sel_width = $clog2(INPUT_COUNT)*OUTPUT_COUNT;
@@ -68,21 +67,23 @@ localparam SM_CLEANUP 						= 4'b0101;
 reg [3:0] byte_counter = 0;
 /* verilator lint_on MULTIDRIVEN */
 reg [3:0] state = SM_CLEANUP;
+reg rx_cmd_avail;
 
 assign selectors = selectors_r;
 assign enabled_out = enabled_out_r;
 assign tx_data = tx_data_r;
 
-always @(posedge rx_ready) begin
-	// TODO: this throws MULTIDRIVEN warning
-	rx_data_r <= rx_data;
-	byte_counter <= byte_counter + 1;
-end
-
 always @(posedge clk) begin
 	if(tx_data_ready == 1'b1) tx_data_ready <= 0;
 	if(f_adv_r == 1'b1) f_adv_r <= 0;
 	if(f_rst_r == 1'b1) f_rst_r <= 0;
+	rx_ready_delay <= rx_ready;
+
+	if(rx_ready && !rx_ready_delay) begin // edge
+		rx_data_r <= rx_data;
+		byte_counter <= byte_counter + 1;
+		rx_cmd_avail <= 1;
+	end
 end
 
 always @(posedge clk) begin
@@ -96,27 +97,32 @@ end
 always @(posedge clk) begin
 	case (state)
 		SM_IDLE: begin
-			case (rx_data_r)
-				{5'b00000, COMM_INVALID}: begin
+			begin
+				if(rx_cmd_avail) begin
+					case (rx_data_r)
+						{5'b00000, COMM_INVALID}: begin
+						end
+						{5'b00000, COMM_READ_ENABLE_MASK}: begin
+							state <= SM_OUTPUT_READ_ENABLE_MASK;
+						end
+						{5'b00000, COMM_READ_PIN_MAP}: begin
+							state <= SM_OUTPUT_READ_PIN_MAP;
+						end
+						{5'b00000, COMM_WRITE_ENABLE_MASK}: begin
+							state <= SM_OUTPUT_WRITE_ENABLE_MASK;
+						end
+						{5'b00000, COMM_WRITE_PIN_MAP}: begin
+							state <= SM_OUTPUT_WRITE_PIN_MAP;
+						end
+						default: begin
+							$display("Got bad IDLE command?: %b", rx_data_r);
+						end
+					endcase
+					rx_cmd_avail <= 0;
+					byte_counter <= 0;
+					rx_data_r <= 0;
 				end
-				{5'b00000, COMM_READ_ENABLE_MASK}: begin
-					state <= SM_OUTPUT_READ_ENABLE_MASK;
-				end
-				{5'b00000, COMM_READ_PIN_MAP}: begin
-					state <= SM_OUTPUT_READ_PIN_MAP;
-				end
-				{5'b00000, COMM_WRITE_ENABLE_MASK}: begin
-					state <= SM_OUTPUT_WRITE_ENABLE_MASK;
-				end
-				{5'b00000, COMM_WRITE_PIN_MAP}: begin
-					state <= SM_OUTPUT_WRITE_PIN_MAP;
-				end
-				default: begin
-					$display("Got bad IDLE command?: %b", rx_data_r);
-				end
-			endcase
-			byte_counter <= 0;
-			rx_data_r <= 0;
+			end
 		end
 		SM_OUTPUT_READ_ENABLE_MASK: begin
 			if (byte_counter<OUT_PIN_ENABLE_SIZE[3:0]) begin

@@ -88,7 +88,7 @@ always @(posedge clk) begin
 		end
 		SM_RX_PARITY: begin
 			// TODO ))
-			$finish;
+			state <= SM_ERROR;
 		end
 		SM_RX_STOP: begin
 			// Transition to STOP at the middle of a DATA bit
