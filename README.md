@@ -33,3 +33,9 @@ And after wiring PC to SBC1
            |          |--> SBC3 RX
            |__________|
 ```
+
+# Setup
+
+Requires [oss-cad-suite-build](https://github.com/YosysHQ/oss-cad-suite-build) to be in $PATH.
+
+Run `make test` to run the tests and `make build` to generate the bitstream. Flash it with `make flash`.
