@@ -114,7 +114,8 @@ always @(posedge clk) begin
 							state <= SM_OUTPUT_WRITE_PIN_MAP;
 						end
 						default: begin
-							$display("Got bad IDLE command?: %b", rx_data_r);
+							//$display("Got bad IDLE command?: %b", rx_data_r);
+							//TODO signal error?
 						end
 					endcase
 					rx_cmd_avail <= 0;

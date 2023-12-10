@@ -7,3 +7,6 @@ mux_tb
 uart_tb
 debug
 fifo_tb
+comm_pnr.json
+comm.fs
+comm.json
