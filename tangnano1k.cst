@@ -1,0 +1,45 @@
+// https://dl.sipeed.com/shareURL/TANG/Nano%201K/2_Schematic page 3
+// PINs 26 29 30 are 1.8v and connected to the BL702
+// PINs 9 10 11 are connected to R B G on the LED, unclear if they can be used
+// PINs 15 24 27 30 31 42 are marked special, unclear if they can be used
+// PINs 38 39 40 41 42 are PSRAM, unclear if they can be used
+// =>  Can definitely use 16 17 18 19 20 22 23 28 29 34 35
+
+IO_LOC "clk" 47;
+IO_PORT "clk" PULL_MODE=UP;
+
+IO_LOC "rx_serial" 9; // R
+IO_PORT "rx_serial" IO_TYPE=LVCMOS33;
+IO_LOC "tx_serial" 10; // G
+IO_PORT "tx_serial" IO_TYPE=LVCMOS33;
+
+// "Left" side, looking from toop with USB facing away
+IO_LOC "in_pins[0]" 16;
+IO_LOC "in_pins[1]" 17;
+IO_LOC "in_pins[2]" 18;
+IO_LOC "in_pins[3]" 22;
+IO_LOC "in_pins[4]" 23;
+IO_PORT "in_pins[0]" IO_TYPE=LVCMOS33;
+IO_PORT "in_pins[1]" IO_TYPE=LVCMOS33;
+IO_PORT "in_pins[2]" IO_TYPE=LVCMOS33;
+IO_PORT "in_pins[3]" IO_TYPE=LVCMOS33;
+IO_PORT "in_pins[4]" IO_TYPE=LVCMOS33;
+//IO_LOC "in_pins[5]" ??;
+//IO_LOC "in_pins[6]" ??;
+//IO_LOC "in_pins[7]" ??;
+
+// "Right" side, looking from toop with USB facing away
+IO_LOC "out_pins[0]" 29;
+IO_LOC "out_pins[1]" 19;
+IO_LOC "out_pins[2]" 20;
+IO_LOC "out_pins[3]" 34;
+IO_LOC "out_pins[4]" 35;
+IO_PORT "out_pins[0]" IO_TYPE=LVCMOS33;
+IO_PORT "out_pins[1]" IO_TYPE=LVCMOS33;
+IO_PORT "out_pins[2]" IO_TYPE=LVCMOS33;
+IO_PORT "out_pins[3]" IO_TYPE=LVCMOS33;
+IO_PORT "out_pins[4]" IO_TYPE=LVCMOS33;
+
+//IO_LOC "out_pins[5]" ??;
+//IO_LOC "out_pins[6]" ??;
+//IO_LOC "out_pins[7]" ??;
