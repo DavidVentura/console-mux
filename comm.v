@@ -63,9 +63,8 @@ localparam SM_OUTPUT_WRITE_PIN_MAP 			= 4'b0100;
 localparam SM_CLEANUP 						= 4'b0101;
 
 // COMM state
-/* verilator lint_off MULTIDRIVEN */
-reg [3:0] byte_counter = 0;
-/* verilator lint_on MULTIDRIVEN */
+reg [3:0] rx_byte_counter = 0;
+reg [3:0] tx_byte_counter = 0;
 reg [3:0] state = SM_CLEANUP;
 reg rx_cmd_avail;
 
@@ -81,7 +80,7 @@ always @(posedge clk) begin
 
 	if(rx_ready && !rx_ready_delay) begin // edge
 		rx_data_r <= rx_data;
-		byte_counter <= byte_counter + 1;
+		rx_byte_counter <= rx_byte_counter + 1;
 		rx_cmd_avail <= 1;
 	end
 end
@@ -119,16 +118,17 @@ always @(posedge clk) begin
 						end
 					endcase
 					rx_cmd_avail <= 0;
-					byte_counter <= 0;
+					rx_byte_counter <= 0;
+					tx_byte_counter <= 0;
 					rx_data_r <= 0;
 				end
 			end
 		end
 		SM_OUTPUT_READ_ENABLE_MASK: begin
-			if (byte_counter<OUT_PIN_ENABLE_SIZE[3:0]) begin
+			if (tx_byte_counter<OUT_PIN_ENABLE_SIZE[3:0]) begin
 				f_w_en <= 1;
-				f_data_in <= enabled_out_r[(8*byte_counter)+:8];
-				byte_counter <= byte_counter + 1;
+				f_data_in <= enabled_out_r[(8*tx_byte_counter)+:8];
+				tx_byte_counter <= tx_byte_counter + 1;
 			end else begin
 				f_w_en <= 0;
 				f_data_in <= 0;
@@ -136,10 +136,10 @@ always @(posedge clk) begin
 			end
 		end
 		SM_OUTPUT_READ_PIN_MAP: begin
-			if (byte_counter<PIN_MAP_SIZE[3:0]) begin
+			if (tx_byte_counter<PIN_MAP_SIZE[3:0]) begin
 				f_w_en <= 1;
-				f_data_in <= selectors_r[(8*byte_counter)+:8];
-				byte_counter <= byte_counter + 1;
+				f_data_in <= selectors_r[(8*tx_byte_counter)+:8];
+				tx_byte_counter <= tx_byte_counter + 1;
 			end else begin
 				f_w_en <= 0;
 				f_data_in <= 0;
@@ -147,17 +147,17 @@ always @(posedge clk) begin
 			end
 		end
 		SM_OUTPUT_WRITE_ENABLE_MASK: begin
-			enabled_out_r[(8*(byte_counter-1))+:8] <= rx_data_r;
-			if (byte_counter == OUT_PIN_ENABLE_SIZE[3:0]) begin
+			enabled_out_r[(8*(rx_byte_counter-1))+:8] <= rx_data_r;
+			if (rx_byte_counter == OUT_PIN_ENABLE_SIZE[3:0]) begin
 				state <= SM_OUTPUT_READ_ENABLE_MASK;
-				byte_counter <= 0;
+				rx_byte_counter <= 0;
 			end
 		end
 		SM_OUTPUT_WRITE_PIN_MAP: begin
-			selectors_r[(8*(byte_counter-1))+:8] <= rx_data_r;
-			if (byte_counter == PIN_MAP_SIZE[3:0]) begin
+			selectors_r[(8*(rx_byte_counter-1))+:8] <= rx_data_r;
+			if (rx_byte_counter == PIN_MAP_SIZE[3:0]) begin
 				state <= SM_OUTPUT_READ_PIN_MAP;
-				byte_counter <= 0;
+				rx_byte_counter <= 0;
 				// This can move to the READ state
 			end
 		end
