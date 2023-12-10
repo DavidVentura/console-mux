@@ -6,3 +6,4 @@ comm_tb
 mux_tb
 uart_tb
 debug
+fifo_tb
