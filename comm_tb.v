@@ -95,6 +95,8 @@ module comm_tb;
 	endtask
 
 	initial begin
+		$dumpfile("test.vcd");
+		$dumpvars(0, comm_tb);
 		run_command(4, c.COMM_READ_PIN_MAP, 0);
 		run_command(4, c.COMM_READ_PIN_MAP, 0); // can run it twice
 		run_command(2, c.COMM_READ_ENABLE_MASK, 0);
@@ -153,6 +155,9 @@ module comm_tb;
 		end
 		#10 $finish;
 
+		// TODO: test of partially applied mask/map 
+		// transitions should be atomic (double buffered)
+		// currently broken
 	end
 
 	always @(posedge rx_ready) begin
